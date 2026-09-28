@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Plot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root { --wall: #eadfc4; --paper: #f4edd6; --line: rgba(120, 104, 80, .2); --ink: #4a3423; --soft: #8a7458; --sun: #d4572e; }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--wall); font-family: 'Gaegu', cursive; color: var(--ink); padding: 16px; }
+  .tile {
+    border-radius: 18px; padding: 18px 22px; background-color: var(--paper);
+    background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 13px 13px; box-shadow: 0 6px 16px rgba(74, 52, 35, .16), inset 0 0 0 1px rgba(74, 52, 35, .08);
+  }
+  .top { display: flex; justify-content: space-between; align-items: baseline; color: var(--soft); font-size: 20px; }
+  .plot { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 6px; }
+  .bed { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; position: relative; }
+  .bed svg { width: 100%; max-width: 230px; height: auto; overflow: visible; }
+  .bed h2 { font-size: 24px; }
+  .bed .info { font-size: 18px; color: var(--soft); line-height: 1.1; min-height: 40px; }
+  .btn { font: 700 18px 'Gaegu', cursive; color: var(--ink); background: #fffdf7; border: 1.5px dashed #b89c74; border-radius: 12px; padding: 2px 14px; cursor: pointer; }
+  .btn:hover:not(:disabled) { background: #eaf4fb; }
+  .btn:disabled { cursor: default; opacity: .6; }
+  .sway { transform-origin: 100px 172px; animation: sway 5s ease-in-out infinite; }
+  .bed:nth-child(2) .sway { animation-delay: -2.5s; }
+  @keyframes sway { 50% { transform: rotate(2.5deg); } }
+  .drop { position: absolute; top: 0; font-size: 22px; animation: fall .9s ease-in forwards; pointer-events: none; }
+  @keyframes fall { to { transform: translateY(150px); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .sway, .drop { animation: none; } }
+  .msg { color: var(--sun); font-size: 17px; min-height: 18px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="tile">
+  <div class="top"><span>🌱 the plot</span><span>water once a day, watch them grow</span></div>
+  <div class="plot">
+    <div class="bed" data-plant="pranya"></div>
+    <div class="bed" data-plant="sagar"></div>
+  </div>
+  <div class="msg" id="msg"></div>
+</div>
+<script>
+  const API = 'https://garden-widgets.vercel.app/api/garden';
+  const STEPS = [0, 1, 3, 6, 10, 15, 21]; // waterings needed for each stage
+  const STAGES = ['a seed', 'a sprout', 'a seedling', 'a young plant', 'budding', 'blooming', 'in full bloom'];
+  const PLANTS = {
+    pranya: { name: '🌸 Pranya', petals: 8, petal: '#f2a3b8', edge: '#d9738f', heart: '#f4c542' },
+    sagar: { name: '🌻 Sagar', petals: 13, petal: '#f6c343', edge: '#d99a1e', heart: '#7a4a2a' },
+  };
+  const HEIGHT = [0, 34, 50, 72, 92, 108, 118];
+  const LEAVES = [0, 2, 2, 4, 4, 6, 6];
+
+  const stageOf = (n) => STEPS.filter((s) => n >= s).length - 1;
+  const daysSince = (from, to) => Math.round((Date.parse(to) - Date.parse(from)) / 86400000);
+
+  function flower(p, x, y, r) {
+    let s = '';
+    for (let i = 0; i < p.petals; i++) {
+      s += `<ellipse cx="${x}" cy="${y - r * .62}" rx="${r * .32}" ry="${r * .58}" fill="${p.petal}" stroke="${p.edge}" stroke-width="1" transform="rotate(${i * 360 / p.petals} ${x} ${y})"/>`;
+    }
+    return s + `<circle cx="${x}" cy="${y}" r="${r * .38}" fill="${p.heart}"/>`;
+  }
+
+  function draw(kind, stage, thirsty) {
+    const p = PLANTS[kind], h = HEIGHT[stage], top = 172 - h;
+    const leaf = thirsty ? '#a3a86b' : '#6aa04a', stem = thirsty ? '#8d9656' : '#4f8a36';
+    let g = '';
+    if (stage === 0) g += '<path d="M86 165 Q100 150 114 165 Z" fill="#7a5433"/><ellipse cx="100" cy="156" rx="5" ry="3.5" fill="#c9a26b"/>';
+    else {
+      g += `<path d="M100 172 Q ${thirsty ? 112 : 104} ${172 - h / 2} ${thirsty ? 110 : 100} ${top}" stroke="${stem}" stroke-width="${stage > 3 ? 5 : 3.5}" fill="none" stroke-linecap="round"/>`;
+      for (let i = 0; i < LEAVES[stage]; i++) {
+        const side = i % 2 ? 1 : -1, y = 158 - (h - 18) * (Math.floor(i / 2) + 1) / (LEAVES[stage] / 2 + 1) - (i % 2) * 6;
+        const rot = side * (thirsty ? 70 : 35);
+        g += `<ellipse cx="${100 + side * 13}" cy="${y}" rx="14" ry="6.5" fill="${leaf}" transform="rotate(${rot} ${100 + side * 3} ${y})"/>`;
+      }
+      const tx = thirsty ? 110 : 100;
+      if (stage === 4) g += `<ellipse cx="${tx}" cy="${top - 4}" rx="7" ry="10" fill="${leaf}"/><ellipse cx="${tx}" cy="${top - 9}" rx="4" ry="5" fill="${p.petal}"/>`;
+      if (stage >= 5) g += flower(p, tx, top - 8, stage === 5 ? 20 : 27);
+      if (stage === 6) g += `<path d="M100 150 Q 80 140 72 128" stroke="${stem}" stroke-width="3" fill="none"/>` + flower(p, 72, 124, 13);
+    }
+    return `<svg viewBox="0 0 200 215" role="img" aria-label="${p.name}'s plant, ${STAGES[stage]}${thirsty ? ', a bit thirsty' : ''}">
+      <g class="sway">${g}</g>
+      <path d="M58 172 H142 L132 212 H68 Z" fill="#c8764a"/><rect x="52" y="164" width="96" height="14" rx="4" fill="#b8653c"/>
+      <ellipse cx="100" cy="166" rx="42" ry="4" fill="#6b4a2e"/></svg>`;
+  }
+
+  let data;
+  function render() {
+    for (const bed of document.querySelectorAll('.bed')) {
+      const kind = bed.dataset.plant, pl = data.plants[kind], stage = stageOf(pl.count);
+      const thirsty = pl.last && daysSince(pl.last, data.date) >= 3;
+      const next = STEPS[stage + 1];
+      const info = pl.count === 0 ? 'freshly planted. give it its first drink!'
+        : `${STAGES[stage]} · watered ${pl.count} day${pl.count > 1 ? 's' : ''}` +
+          (thirsty ? '<br>looking a little thirsty 🥺' : next ? `<br>${next - pl.count} more to grow` : '<br>fully grown, keep it happy ✨');
+      bed.innerHTML = `${draw(kind, stage, thirsty)}<h2>${PLANTS[kind].name}</h2><div class="info">${info}</div>`;
+      const btn = document.createElement('button');
+      btn.className = 'btn';
+      btn.textContent = pl.wateredToday ? 'watered today ✓' : '💧 water';
+      btn.disabled = pl.wateredToday;
+      btn.onclick = () => water(kind, bed);
+      bed.append(btn);
+    }
+  }
+
+  async function water(kind, bed) {
+    document.getElementById('msg').textContent = '';
+    for (let i = 0; i < 3; i++) {
+      const d = document.createElement('span');
+      d.className = 'drop'; d.textContent = '💧';
+      d.style.left = `calc(50% + ${(i - 1) * 22}px)`; d.style.animationDelay = `${i * .12}s`;
+      bed.append(d);
+      setTimeout(() => d.remove(), 1400);
+    }
+    try {
+      const res = await fetch(API, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ plant: kind }) });
+      if (!res.ok) throw 0;
+      data = await res.json();
+      setTimeout(render, 900);
+    } catch { document.getElementById('msg').textContent = 'couldn\'t water, try again'; }
+  }
+
+  async function load() {
+    try { data = await (await fetch(API, { cache: 'no-store' })).json(); render(); }
+    catch { document.getElementById('msg').textContent = 'couldn\'t load, retrying…'; }
+  }
+  load();
+  setInterval(load, 60000);
+</script>
+</body>
+</html>
