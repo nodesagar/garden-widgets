@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Our Living Room</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root { --wall: #eadfc4; --paper: #f4edd6; --line: rgba(120, 104, 80, .2); --ink: #4a3423; --soft: #8a7458; --sun: #d4572e; --sat: #5e8f3a; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { background: var(--wall); overflow: hidden; }
+  body { font-family: 'Gaegu', cursive; color: var(--ink); }
+  body.stack { overflow-y: auto; }
+  #stage { position: relative; }
+  .canvas { position: absolute; top: 0; left: 0; width: 1000px; height: 640px; padding: 16px; transform-origin: 0 0; }
+  .bento { display: grid; grid-template-columns: 1fr 440px; grid-template-rows: 296px 296px; gap: 16px; height: 100%; }
+  .stack .canvas { width: 440px; height: auto; }
+  .stack .bento { grid-template-columns: 1fr; grid-template-rows: 250px 320px auto; }
+  .stack .cal-tile { grid-column: 1; grid-row: 3; }
+
+  .tile {
+    position: relative; border-radius: 18px; background-color: var(--paper);
+    background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 13px 13px; box-shadow: 0 6px 16px rgba(74, 52, 35, .16), inset 0 0 0 1px rgba(74, 52, 35, .08);
+  }
+  .tile::after { /* paper grain */
+    content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: .35; mix-blend-mode: multiply;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .48 0 0 0 0 .38 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .st { position: absolute; width: 44px; pointer-events: none; z-index: 2; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .2)); }
+
+  /* clock */
+  .clock-tile { display: flex; align-items: center; gap: 18px; padding: 16px 22px; }
+  .clock-tile svg.face { height: 100%; width: auto; aspect-ratio: 1; flex: none; }
+  .clock-info { display: flex; flex-direction: column; gap: 2px; }
+  .clock-info .time { font-size: 54px; font-weight: 700; line-height: 1; white-space: nowrap; }
+  .clock-info .date { font-size: 22px; color: var(--soft); white-space: nowrap; }
+  .clock-info .greet { font-size: 22px; margin-top: 6px; }
+  .stack .clock-tile { padding: 14px 18px; }
+  .stack .clock-info .time { font-size: 40px; }
+
+  /* photo */
+  .photo-tile { display: flex; align-items: center; gap: 20px; padding: 18px 22px; }
+  .polaroid { position: relative; height: 100%; aspect-ratio: .88; flex: none; background: #fffdf7; padding: 9px 9px 30px; transform: rotate(-2deg); box-shadow: 0 4px 12px rgba(74, 52, 35, .22); }
+  .polaroid img { width: 100%; height: 100%; object-fit: cover; display: block; background: #eee6d2; }
+  .polaroid .scribble { position: absolute; bottom: 5px; left: 0; right: 0; text-align: center; font-size: 17px; color: var(--soft); }
+  .tape { position: absolute; top: -10px; left: 50%; width: 70px; height: 22px; margin-left: -35px; background: rgba(214, 186, 132, .6); transform: rotate(3deg); }
+  .photo-side { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .photo-side h3 { font-size: 30px; line-height: 1; }
+  .photo-side p { font-size: 18px; color: var(--soft); line-height: 1.1; }
+  .btn { align-self: flex-start; font: 700 18px 'Gaegu', cursive; color: var(--ink); background: #fffdf7; border: 1.5px dashed #b89c74; border-radius: 12px; padding: 3px 12px; cursor: pointer; white-space: nowrap; }
+  .btn:hover { background: #fff6e0; }
+  .upload { display: none; flex-direction: column; gap: 6px; }
+  .upload.open { display: flex; }
+  .upload input[type=password] { font: 18px 'Gaegu', cursive; padding: 3px 8px; border: 1.5px solid #cbb38c; border-radius: 10px; background: #fffdf7; width: 160px; }
+  .msg { font-size: 16px; color: var(--sun); min-height: 18px; }
+  .stack .photo-tile { padding: 16px; }
+
+  /* calendar */
+  .cal-tile { grid-column: 2; grid-row: 1 / span 2; padding: 20px 20px 12px; }
+  .pwrap { position: relative; }
+  .painting { position: relative; height: 300px; overflow: hidden; border-radius: 3px; }
+  .painting svg { width: 100%; height: 100%; display: block; }
+  .quote { position: absolute; top: 10px; left: 0; right: 0; text-align: center; font-size: 23px; line-height: 1.05; color: #3b2a1e; padding: 0 30px; text-shadow: 0 0 6px rgba(255, 255, 255, .7); }
+  .cal { display: grid; grid-template-columns: 62px 1fr; gap: 4px; margin-top: 10px; }
+  .side { display: flex; flex-direction: column; align-items: flex-start; }
+  .ym { font-weight: 700; font-size: 26px; line-height: .95; }
+  .nav { display: flex; gap: 2px; margin: 4px 0 2px; }
+  .nav button { background: none; border: 0; font: 700 20px 'Gaegu', cursive; color: var(--soft); cursor: pointer; padding: 0 5px; border-radius: 6px; }
+  .nav button:hover { background: rgba(138, 116, 88, .15); color: var(--ink); }
+  .side svg { width: 50px; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  th { font-weight: 700; font-size: 15px; padding-bottom: 2px; }
+  td { position: relative; text-align: center; font-size: 19px; font-weight: 700; height: 31px; border-top: 1px solid rgba(90, 70, 50, .35); cursor: pointer; user-select: none; }
+  td + td { border-left: 1px solid rgba(90, 70, 50, .35); }
+  td:first-child { color: var(--sun); } td:last-child { color: var(--sat); }
+  td.empty { cursor: default; }
+  td .ring { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  td .heart { position: absolute; top: 0; right: 1px; width: 11px; pointer-events: none; }
+  td:not(.empty):hover { background: rgba(212, 87, 46, .08); }
+  .tip { text-align: center; font-size: 14px; color: var(--soft); margin-top: 4px; }
+  .sig { text-align: center; font-size: 16px; color: #a0522d; }
+</style>
+</head>
+<body>
+<div id="stage"><div class="canvas" id="canvas"><div class="bento">
+
+  <section class="tile clock-tile" id="clockTile">
+    <svg class="face" viewBox="0 0 200 200"><g id="face"></g><g id="hands"></g></svg>
+    <div class="clock-info"><div class="time" id="time"></div><div class="date" id="date"></div><div class="greet" id="greet"></div></div>
+  </section>
+
+  <section class="tile photo-tile" id="photoTile">
+    <div class="polaroid"><div class="tape"></div><img id="photo" alt="our photo"><div class="scribble">us, lately ♡</div></div>
+    <div class="photo-side">
+      <h3>our little moments</h3>
+      <p>a photo that makes us smile, pinned to the wall</p>
+      <button class="btn" id="change">change photo 📷</button>
+      <div class="upload" id="upload">
+        <input type="password" id="pass" placeholder="our passcode" autocomplete="off">
+        <button class="btn" id="pick">choose a photo</button>
+        <input type="file" id="file" accept="image/*" hidden>
+      </div>
+      <div class="msg" id="msg"></div>
+    </div>
+  </section>
+
+  <section class="tile cal-tile" id="calTile">
+    <div class="pwrap"><div class="painting"><div id="art" style="height:100%"></div><div class="quote" id="quote"></div></div></div>
+    <div class="cal">
+      <div class="side">
+        <div class="ym" id="ym"></div>
+        <div class="nav"><button id="prev" aria-label="Previous month">‹</button><button id="next" aria-label="Next month">›</button></div>
+        <div id="buddy"></div>
+      </div>
+      <table><thead><tr><th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th></tr></thead><tbody id="days"></tbody></table>
+    </div>
+    <div class="tip">tap a day to leave a little heart for us</div>
+    <div class="sig">~ idea garden ~</div>
+  </section>
+
+</div></div></div>
+<script src="scene.js"></script>
+<script>
+  const API = 'https://garden-widgets.vercel.app/api';
+  const now = new Date();
+
+  // ---------- fit the fixed canvas into whatever size the embed is ----------
+  const canvas = document.getElementById('canvas'), stage = document.getElementById('stage');
+  function fit() {
+    const stack = innerWidth < 600;
+    document.body.classList.toggle('stack', stack);
+    const s = stack ? innerWidth / 440 : Math.min(innerWidth / 1000, innerHeight / 640);
+    const w = canvas.offsetWidth * s, h = canvas.offsetHeight * s;
+    canvas.style.transform = `translate(${stack ? 0 : (innerWidth - w) / 2}px, ${stack ? 0 : (innerHeight - h) / 2}px) scale(${s})`;
+    stage.style.height = stack ? `${h}px` : '100vh';
+  }
+  addEventListener('resize', fit);
+
+  // ---------- stickers ----------
+  const W = `<filter id="w"><feTurbulence type="fractalNoise" baseFrequency=".08" numOctaves="2"/><feDisplacementMap in="SourceGraphic" scale="1.6"/></filter>`;
+  const svg = (body, vb = '0 0 40 40') => `<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg"><defs>${W}</defs><g filter="url(#w)">${body}</g></svg>`;
+  const leaf = (a) => `<path transform="rotate(${a} 20 20)" d="M20 20 C12 16 10 6 16 5 C19 4 20 8 20 10 C20 8 21 4 24 5 C30 6 28 16 20 20Z" fill="#5f9a3a"/><path transform="rotate(${a} 20 20)" d="M20 20 L20 9" stroke="#8cc05a" stroke-width="1"/>`;
+  const STICKERS = {
+    clover: svg(`<path d="M20 20 Q24 30 18 39" stroke="#4d7f2e" stroke-width="1.8" fill="none"/>${[0, 90, 180, 270].map(leaf).join('')}`),
+    blossom: svg(`${[0, 72, 144, 216, 288].map((a) => `<ellipse transform="rotate(${a} 20 20)" cx="20" cy="11" rx="6" ry="8" fill="#f2b3c0"/>`).join('')}<circle cx="20" cy="20" r="4" fill="#f6d34a"/><circle cx="20" cy="20" r="1.5" fill="#d4572e"/>`),
+    orange: svg(`<circle cx="20" cy="20" r="17" fill="#f08a24"/><circle cx="20" cy="20" r="14" fill="#fcd9a0"/><circle cx="20" cy="20" r="12.5" fill="#f7a93a"/>${[0, 45, 90, 135].map((a) => `<line transform="rotate(${a} 20 20)" x1="20" y1="8" x2="20" y2="32" stroke="#fde7c0" stroke-width="1.4"/>`).join('')}`),
+    mushroom: svg(`<path d="M16 22 Q15 34 13 38 H27 Q25 34 24 22Z" fill="#f3e6c8"/><path d="M4 23 Q6 6 20 5 Q34 6 36 23Z" fill="#c8402e"/><ellipse cx="13" cy="14" rx="3" ry="2.2" fill="#fff"/><ellipse cx="24" cy="10" rx="2.5" ry="2" fill="#fff"/><ellipse cx="29" cy="18" rx="2.6" ry="2" fill="#fff"/><ellipse cx="19" cy="18" rx="2" ry="1.6" fill="#fff"/>`),
+    maple: svg(`<path d="M20 4 L23 12 L31 9 L28 17 L36 20 L28 23 L31 31 L23 28 L20 36 L17 28 L9 31 L12 23 L4 20 L12 17 L9 9 L17 12Z" fill="#e0782c"/><path d="M20 36 L20 14" stroke="#a24d1c" stroke-width="1.2"/>`),
+    pine: svg(`<rect x="18.5" y="31" width="3" height="7" fill="#7a5436"/><path d="M20 3 L30 17 H25 L33 31 H7 L15 17 H10Z" fill="#3f7a4a"/><path d="M13 24 Q20 21 27 26" stroke="#e8c55a" stroke-width="1.2" fill="none"/><circle cx="16" cy="27" r="1.5" fill="#c8402e"/><circle cx="24" cy="20" r="1.4" fill="#c8402e"/>`),
+    star: svg(`<path d="M20 3 L24.5 14.5 L37 15 L27 23 L30.5 35.5 L20 28 L9.5 35.5 L13 23 L3 15 L15.5 14.5Z" fill="#f2c14e"/>`),
+    sprout: svg(`<path d="M12 44 L14 58 H34 L36 44Z" fill="#c8693f"/><rect x="10" y="40" width="28" height="6" rx="1.5" fill="#b35a33"/><path d="M24 40 Q23 28 24 20" stroke="#4d7f2e" stroke-width="2.2" fill="none"/><path d="M24 26 C16 26 10 20 10 14 C18 14 24 18 24 26Z" fill="#6fae45"/><path d="M24 21 C30 20 36 14 36 8 C28 8 24 13 24 21Z" fill="#5f9a3a"/><circle cx="31" cy="8" r="3.5" fill="#f2b3c0"/><circle cx="31" cy="8" r="1.4" fill="#f6d34a"/>`, '0 0 48 60'),
+    heart: `<svg viewBox="0 0 20 18" xmlns="http://www.w3.org/2000/svg"><path d="M10 17 C3 11 0 8 0 4.8 C0 2 2 0 4.7 0 C6.8 0 8.6 1.3 10 3.2 C11.4 1.3 13.2 0 15.3 0 C18 0 20 2 20 4.8 C20 8 17 11 10 17Z" fill="#e0607e"/></svg>`,
+    ring: `<svg class="ring" viewBox="0 0 40 30" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 6 C18 1 34 3 36 13 C38 24 22 28 12 25 C3 22 2 12 10 5" stroke="#d4572e" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>`,
+  };
+  const SEASON_STICKERS = {
+    spring: ['blossom', 'clover', 'clover', 'blossom'],
+    summer: ['orange', 'clover', 'clover', 'orange'],
+    autumn: ['mushroom', 'maple', 'maple', 'mushroom'],
+    winter: ['pine', 'star', 'orange', 'pine'],
+  };
+  function stick(parent, name, pos, deg) {
+    const el = document.createElement('div');
+    el.className = 'st';
+    Object.assign(el.style, pos, { transform: `rotate(${deg}deg)` });
+    el.innerHTML = STICKERS[name];
+    parent.appendChild(el);
+  }
+  const clearStickers = (parent) => parent.querySelectorAll(':scope > .st').forEach((el) => el.remove());
+
+  // ---------- clock ----------
+  const season = SEASON_OF_MONTH[now.getMonth()];
+  function tint(h) {
+    if (h >= 5 && h < 8) return ['#f7b69c', 0.28];
+    if (h >= 8 && h < 17) return [null, 0];
+    if (h >= 17 && h < 20) return ['#f08a3a', 0.3];
+    return ['#1d2748', 0.55];
+  }
+  function greeting(h) {
+    if (h < 5) return 'still up? rest soon 🌙';
+    if (h < 12) return 'good morning, sunshine ☀️';
+    if (h < 17) return 'good afternoon 🌿';
+    if (h < 21) return 'good evening, chai time 🍵';
+    return 'good night, sleep well 🌙';
+  }
+  let faceHour = -1;
+  function drawFace(h, m) {
+    const [tc, to] = tint(h), night = h < 5 || h >= 20;
+    const t = night ? ((h + 4) % 24 + m / 60) / 9 : (h - 5 + m / 60) / 15;
+    const bx = 40 + t * 120, by = 92 - Math.sin(t * Math.PI) * 40;
+    const art = scene(season, { w: 200, h: 200, seed: 9, id: 'k', gouache: true }).replace('<svg ', '<svg x="21" y="21" width="158" height="158" ');
+    let nums = '';
+    for (let i = 1; i <= 12; i++) {
+      const a = (i * Math.PI) / 6;
+      nums += `<text x="${100 + Math.sin(a) * 89}" y="${100 - Math.cos(a) * 89 + 5}" text-anchor="middle" font-family="Gaegu" font-weight="700" font-size="${i % 3 ? 12 : 15}" fill="${i === 12 ? '#d4572e' : '#4a3423'}">${i}</text>`;
+    }
+    let stars = '';
+    if (night) for (let i = 0; i < 12; i++) stars += `<circle cx="${45 + ((i * 37) % 110)}" cy="${40 + ((i * 23) % 45)}" r="${i % 3 ? 0.8 : 1.3}" fill="#fff" opacity=".85"/>`;
+    document.getElementById('face').innerHTML = `
+      <defs>
+        <clipPath id="kc"><circle cx="100" cy="100" r="79"/></clipPath>
+        <filter id="kw"><feTurbulence type="fractalNoise" baseFrequency=".06" numOctaves="2"/><feDisplacementMap in="SourceGraphic" scale="2.2"/></filter>
+      </defs>
+      <circle cx="100" cy="100" r="97" fill="#fbf5e3" stroke="#8a5a3c" stroke-width="2.5" filter="url(#kw)"/>
+      <g clip-path="url(#kc)">${art}${tc ? `<rect width="200" height="200" fill="${tc}" opacity="${to}"/>` : ''}${stars}
+        ${night ? `<circle cx="${bx}" cy="${by}" r="8" fill="#f7efd0"/><circle cx="${bx + 3.5}" cy="${by - 2.5}" r="7" fill="#2d3658"/>` : `<circle cx="${bx}" cy="${by}" r="9" fill="#ffd66b" opacity=".95"/>`}
+      </g>
+      <circle cx="100" cy="100" r="79" fill="none" stroke="#8a5a3c" stroke-width="2" filter="url(#kw)"/>
+      ${nums}`;
+    faceHour = h;
+  }
+  document.getElementById('hands').innerHTML = `
+    <g id="hh"><line x1="100" y1="104" x2="100" y2="60" stroke="#fbf5e3" stroke-width="8" stroke-linecap="round"/><line x1="100" y1="104" x2="100" y2="60" stroke="#3b2a1e" stroke-width="5" stroke-linecap="round"/></g>
+    <g id="mh"><line x1="100" y1="106" x2="100" y2="40" stroke="#fbf5e3" stroke-width="6" stroke-linecap="round"/><line x1="100" y1="106" x2="100" y2="40" stroke="#3b2a1e" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="100" cy="34" rx="4" ry="7" fill="#5f9a3a" stroke="#fbf5e3" stroke-width="1"/></g>
+    <g id="sh"><line x1="100" y1="116" x2="100" y2="32" stroke="#d4572e" stroke-width="1.4" stroke-linecap="round"/><path transform="translate(95.5 114) scale(.45)" d="M10 17 C3 11 0 8 0 4.8 C0 2 2 0 4.7 0 C6.8 0 8.6 1.3 10 3.2 C11.4 1.3 13.2 0 15.3 0 C18 0 20 2 20 4.8 C20 8 17 11 10 17Z" fill="#e0607e"/></g>
+    <circle cx="100" cy="100" r="5.5" fill="#f08a24" stroke="#fbf5e3" stroke-width="1.5"/>`;
+  function tick() {
+    const d = new Date(), h = d.getHours(), m = d.getMinutes(), s = d.getSeconds();
+    if (h !== faceHour || s === 0) drawFace(h, m);
+    document.getElementById('hh').setAttribute('transform', `rotate(${(h % 12) * 30 + m / 2} 100 100)`);
+    document.getElementById('mh').setAttribute('transform', `rotate(${m * 6 + s / 10} 100 100)`);
+    document.getElementById('sh').setAttribute('transform', `rotate(${s * 6} 100 100)`);
+    document.getElementById('time').textContent = d.toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' });
+    document.getElementById('date').textContent = d.toLocaleDateString('en', { weekday: 'short', day: 'numeric', month: 'short' });
+    document.getElementById('greet').textContent = greeting(h);
+  }
+  const clockTile = document.getElementById('clockTile');
+  stick(clockTile, SEASON_STICKERS[season][1], { right: '12px', top: '10px' }, 12);
+
+  // ---------- photo frame ----------
+  const photo = document.getElementById('photo'), msg = document.getElementById('msg');
+  photo.onerror = () => { photo.onerror = null; photo.src = 'img/frame.png'; };
+  photo.src = `${API}/photo?t=${Date.now()}`;
+  const passInput = document.getElementById('pass');
+  try { passInput.value = localStorage.getItem('garden-pass') || ''; } catch (e) {}
+  document.getElementById('change').onclick = () => document.getElementById('upload').classList.toggle('open');
+  document.getElementById('pick').onclick = () => {
+    if (!passInput.value) { msg.textContent = 'type our passcode first'; return; }
+    document.getElementById('file').click();
+  };
+  // Shrink big photos in the browser so uploads stay small and fast.
+  function shrink(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const k = Math.min(1, 1400 / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        c.toBlob((b) => (b ? resolve(b) : reject()), 'image/jpeg', 0.86);
+      };
+      img.onerror = reject;
+      img.src = URL.createObjectURL(file);
+    });
+  }
+  document.getElementById('file').onchange = async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    msg.textContent = 'pinning it up…';
+    try {
+      const body = await shrink(file);
+      const res = await fetch(`${API}/photo`, { method: 'POST', headers: { 'content-type': 'image/jpeg', 'x-passcode': passInput.value }, body });
+      if (res.status === 401) { msg.textContent = 'hmm, wrong passcode'; return; }
+      if (!res.ok) { msg.textContent = (await res.json().catch(() => ({}))).error || 'upload failed, try again'; return; }
+      try { localStorage.setItem('garden-pass', passInput.value); } catch (err) {}
+      photo.src = `${API}/photo?t=${Date.now()}`;
+      msg.textContent = 'pinned! ♡';
+      document.getElementById('upload').classList.remove('open');
+    } catch (err) {
+      msg.textContent = "couldn't read that photo";
+    }
+  };
+
+  // ---------- calendar ----------
+  const QUOTES = [
+    'slow mornings count too', 'small seeds, planted together', 'let it bloom at its own pace',
+    'every idea starts as a tiny sprout', 'keep the windows open for new ideas', 'sunlight, chai, and one good idea',
+    'grow a little every day', 'some days are just for wandering', 'time is ours to fill with good things',
+    'let the old leaves fall, keep the roots', 'stay warm, stay curious', 'rest is part of growing too',
+  ];
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'July', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  // ?month=2026-12 opens a specific month
+  const q = (new URLSearchParams(location.search).get('month') || '').split('-').map(Number);
+  const view = q[1] ? new Date(q[0], q[1] - 1, 1) : new Date(now.getFullYear(), now.getMonth(), 1);
+  let hearts = {};
+  const calTile = document.getElementById('calTile'), pwrap = calTile.querySelector('.pwrap');
+
+  function renderCal() {
+    const y = view.getFullYear(), m = view.getMonth(), sn = SEASON_OF_MONTH[m];
+    document.getElementById('art').innerHTML = scene(sn, { w: 400, h: 300, seed: m + 3, id: 'c', gouache: true });
+    document.getElementById('quote').textContent = QUOTES[m];
+    document.getElementById('ym').innerHTML = `${y}<br>${MONTHS[m]}`;
+    document.getElementById('buddy').innerHTML = STICKERS.sprout;
+    let html = '<tr>' + '<td class="empty"></td>'.repeat(view.getDay());
+    const days = new Date(y, m + 1, 0).getDate();
+    for (let d = 1; d <= days; d++) {
+      const key = `${y}-${m + 1}-${d}`;
+      const isToday = y === now.getFullYear() && m === now.getMonth() && d === now.getDate();
+      html += `<td data-key="${key}">${isToday ? STICKERS.ring : ''}${d}${hearts[key] ? `<span class="heart">${STICKERS.heart}</span>` : ''}</td>`;
+      if ((view.getDay() + d) % 7 === 0 && d < days) html += '</tr><tr>';
+    }
+    html += '<td class="empty"></td>'.repeat((7 - ((view.getDay() + days) % 7)) % 7) + '</tr>';
+    document.getElementById('days').innerHTML = html;
+    const [a, b, c, e] = SEASON_STICKERS[sn];
+    clearStickers(pwrap); clearStickers(calTile);
+    stick(pwrap, a, { left: '-14px', bottom: '-12px' }, -12);
+    stick(pwrap, b, { right: '-14px', bottom: '-12px' }, 12);
+    stick(calTile, c, { left: '4px', bottom: '6px' }, -12);
+    stick(calTile, e, { right: '4px', bottom: '6px' }, 12);
+    fit();
+  }
+  async function syncHearts() {
+    try {
+      const res = await fetch(`${API}/hearts`, { cache: 'no-store' });
+      if (res.ok) { hearts = await res.json(); renderCal(); }
+    } catch (e) {}
+  }
+  document.getElementById('days').onclick = (e) => {
+    const td = e.target.closest('td[data-key]');
+    if (!td) return;
+    const key = td.dataset.key, before = { ...hearts };
+    if (hearts[key]) delete hearts[key]; else hearts[key] = 1;
+    renderCal();
+    fetch(`${API}/hearts`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key }) })
+      .then((res) => (res.ok ? res.json() : Promise.reject(res)))
+      .then((server) => { hearts = server; renderCal(); })
+      .catch(() => { hearts = before; renderCal(); });
+  };
+  document.getElementById('prev').onclick = () => { view.setMonth(view.getMonth() - 1); renderCal(); };
+  document.getElementById('next').onclick = () => { view.setMonth(view.getMonth() + 1); renderCal(); };
+
+  tick();
+  setInterval(tick, 1000);
+  renderCal();
+  syncHearts();
+  setInterval(syncHearts, 30000);
+  document.fonts.ready.then(fit);
+</script>
+</body>
+</html>
