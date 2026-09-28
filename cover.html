@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Garden Cover</title>
+<style>* { margin: 0; } body { width: 1500px; height: 600px; overflow: hidden; } svg { width: 1500px; height: 600px; display: block; }</style>
+</head>
+<body>
+<div id="art"></div>
+<script src="scene.js"></script>
+<script>
+  // ?season=spring|summer|autumn|winter, defaults to spring
+  const season = new URLSearchParams(location.search).get('season') || 'spring';
+  document.getElementById('art').innerHTML = scene(season, { w: 1500, h: 600, seed: 11, id: 'v' });
+</script>
+</body>
+</html>

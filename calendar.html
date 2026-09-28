@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Garden Calendar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Fraunces:opsz,wght@9..144,500&display=swap" rel="stylesheet">
+<style>
+  :root { --paper: #f7f0dc; --ink: #4a3b2c; --soft: #8a7658; --today: #e79a7f; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; background: transparent; }
+  body { display: grid; place-items: center; font-family: 'Fraunces', serif; color: var(--ink); padding: 8px; }
+  .card { width: min(100%, 360px); background: var(--paper); border-radius: 28px 28px 14px 14px; overflow: hidden; box-shadow: 0 6px 18px rgba(74, 59, 44, .18); }
+  .art { position: relative; aspect-ratio: 400 / 230; }
+  .art svg { width: 100%; height: 100%; display: block; }
+  .quote { position: absolute; left: 12px; bottom: 10px; max-width: 55%; font-family: 'Caveat', cursive; font-size: 17px; line-height: 1.05; color: #fffdf5; text-shadow: 0 1px 3px rgba(0, 0, 0, .35); }
+  .head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px 4px; }
+  .month { font-family: 'Caveat', cursive; font-weight: 700; font-size: 30px; }
+  .month small { font-size: 18px; color: var(--soft); font-weight: 500; }
+  button { background: none; border: 0; font: 22px 'Caveat', cursive; color: var(--soft); cursor: pointer; padding: 2px 8px; border-radius: 10px; }
+  button:hover { background: rgba(138, 118, 88, .12); color: var(--ink); }
+  .grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; padding: 4px 12px 14px; row-gap: 2px; font-size: 13px; }
+  .dow { font-family: 'Caveat', cursive; font-size: 17px; color: var(--soft); }
+  .d { width: 30px; height: 30px; margin: 0 auto; border-radius: 50%; display: grid; place-items: center; }
+  .d.today { background: var(--today); color: #fff; box-shadow: 0 0 0 3px rgba(231, 154, 127, .3); }
+  .d.sun { color: #b5613f; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="art"><div id="art"></div><div class="quote" id="quote"></div></div>
+  <div class="head">
+    <button id="prev" aria-label="Previous month">‹</button>
+    <div class="month" id="month"></div>
+    <button id="next" aria-label="Next month">›</button>
+  </div>
+  <div class="grid" id="grid"></div>
+</div>
+<script src="scene.js"></script>
+<script>
+  const QUOTES = [
+    'Slow mornings count too.', 'Small seeds, planted together.', 'Let it bloom at its own pace.',
+    'Every idea starts as a tiny sprout.', 'Keep the windows open for new ideas.', 'Sunlight, chai, and one good idea.',
+    'Grow a little every day.', 'Some days are just for wandering.', 'Time is ours to fill with good things.',
+    'Let the old leaves fall, keep the roots.', 'Stay warm, stay curious.', 'Rest is part of growing too.',
+  ];
+  const now = new Date();
+  let view = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  function render() {
+    const y = view.getFullYear(), m = view.getMonth();
+    document.getElementById('art').innerHTML = scene(SEASON_OF_MONTH[m], { seed: m + 3, id: 'c' });
+    document.getElementById('quote').textContent = QUOTES[m];
+    document.getElementById('month').innerHTML = `${view.toLocaleString('en', { month: 'long' })} <small>${y}</small>`;
+    let html = 'SMTWTFS'.split('').map((d) => `<div class="dow">${d}</div>`).join('');
+    html += '<div></div>'.repeat(view.getDay());
+    const days = new Date(y, m + 1, 0).getDate();
+    for (let d = 1; d <= days; d++) {
+      const isToday = y === now.getFullYear() && m === now.getMonth() && d === now.getDate();
+      const isSun = new Date(y, m, d).getDay() === 0;
+      html += `<div class="d${isToday ? ' today' : ''}${isSun ? ' sun' : ''}">${d}</div>`;
+    }
+    document.getElementById('grid').innerHTML = html;
+  }
+  document.getElementById('prev').onclick = () => { view.setMonth(view.getMonth() - 1); render(); };
+  document.getElementById('next').onclick = () => { view.setMonth(view.getMonth() + 1); render(); };
+  render();
+</script>
+</body>
+</html>

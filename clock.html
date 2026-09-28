@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Garden Clock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root { --paper: #f7f0dc; --ink: #4a3b2c; --soft: #8a7658; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; background: transparent; }
+  body { display: grid; place-items: center; font-family: 'Caveat', cursive; color: var(--ink); padding: 8px; }
+  .card { width: min(100%, 260px); background: var(--paper); border-radius: 22px; padding: 16px 16px 12px; box-shadow: 0 6px 18px rgba(74, 59, 44, .18); text-align: center; }
+  svg { width: 100%; display: block; }
+  .time { font-size: 34px; font-weight: 700; margin-top: 6px; line-height: 1; }
+  .greet { font-size: 19px; color: var(--soft); }
+</style>
+</head>
+<body>
+<div class="card">
+  <svg viewBox="0 0 200 200" id="face"></svg>
+  <div class="time" id="time"></div>
+  <div class="greet" id="greet"></div>
+</div>
+<script>
+  // Sky changes with the hour: dawn, day, golden evening, night.
+  function sky(h) {
+    if (h >= 5 && h < 8) return ['#f6c9b0', '#fbe9c9', '#9cc57a'];
+    if (h >= 8 && h < 17) return ['#8fcbe8', '#e3f3f4', '#8fc262'];
+    if (h >= 17 && h < 20) return ['#f0a877', '#f9dca6', '#b3a35a'];
+    return ['#2f3e66', '#5a6a94', '#3f5a4a'];
+  }
+  function greeting(h) {
+    if (h < 5) return 'still up? rest soon 🌙';
+    if (h < 12) return 'good morning ☀️';
+    if (h < 17) return 'good afternoon 🌿';
+    if (h < 21) return 'good evening 🍵';
+    return 'good night 🌙';
+  }
+  function draw() {
+    const d = new Date(), h = d.getHours(), m = d.getMinutes(), s = d.getSeconds();
+    const [top, bottom, hill] = sky(h);
+    const night = h < 5 || h >= 20;
+    // sun or moon travels an arc across the face during its half of the day
+    const t = night ? ((h + 4) % 24 + m / 60) / 9 : (h - 5 + m / 60) / 15;
+    const bx = 50 + t * 100, by = 105 - Math.sin(t * Math.PI) * 45;
+    let stars = '';
+    if (night) for (let i = 0; i < 14; i++) stars += `<circle cx="${40 + ((i * 37) % 120)}" cy="${40 + ((i * 23) % 55)}" r="${i % 3 ? 0.8 : 1.3}" fill="#fff" opacity=".8"/>`;
+    let ticks = '';
+    for (let i = 0; i < 12; i++) {
+      const a = (i * Math.PI) / 6;
+      ticks += `<circle cx="${100 + Math.sin(a) * 82}" cy="${100 - Math.cos(a) * 82}" r="${i % 3 ? 2 : 3.5}" fill="${night ? '#f7f0dc' : '#4a3b2c'}" opacity=".8"/>`;
+    }
+    const hand = (deg, len, w, c) => `<line x1="100" y1="100" x2="${100 + Math.sin((deg * Math.PI) / 180) * len}" y2="${100 - Math.cos((deg * Math.PI) / 180) * len}" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/>`;
+    const handColor = night ? '#f7f0dc' : '#4a3b2c';
+    document.getElementById('face').innerHTML = `
+      <defs>
+        <linearGradient id="sk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${top}"/><stop offset="1" stop-color="${bottom}"/></linearGradient>
+        <clipPath id="c"><circle cx="100" cy="100" r="92"/></clipPath>
+      </defs>
+      <circle cx="100" cy="100" r="98" fill="#b88a5a"/>
+      <g clip-path="url(#c)">
+        <rect width="200" height="200" fill="url(#sk)"/>${stars}
+        ${night ? `<circle cx="${bx}" cy="${by}" r="9" fill="#f7efd0"/><circle cx="${bx + 4}" cy="${by - 3}" r="8" fill="${top}"/>` : `<circle cx="${bx}" cy="${by}" r="10" fill="#ffd66b"/>`}
+        <path d="M0 140 Q50 115 100 132 T200 125 V200 H0Z" fill="${hill}" opacity=".85"/>
+        <path d="M0 160 Q60 140 120 155 T200 150 V200 H0Z" fill="${hill}"/>
+        <g transform="translate(46 138) scale(.35)"><rect x="-30" y="-30" width="60" height="30" fill="#f1e2b5"/><path d="M-36 -28 L-12 -54 L36 -54 L40 -28Z" fill="#9a5a3c"/><rect x="-2" y="-22" width="7" height="8" fill="${night ? '#ffd66b' : '#fbe6a2'}"/><rect x="14" y="-22" width="7" height="8" fill="${night ? '#ffd66b' : '#fbe6a2'}"/></g>
+      </g>
+      ${ticks}
+      ${hand((h % 12) * 30 + m / 2, 45, 5, handColor)}
+      ${hand(m * 6 + s / 10, 66, 3.5, handColor)}
+      ${hand(s * 6, 72, 1.5, '#e07a5f')}
+      <circle cx="100" cy="100" r="5" fill="#e07a5f"/>`;
+    document.getElementById('time').textContent = d.toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' });
+    document.getElementById('greet').textContent = greeting(h);
+  }
+  draw();
+  setInterval(draw, 1000);
+</script>
+</body>
+</html>

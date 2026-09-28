@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Photo Frame Placeholder</title>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; } body { width: 800px; height: 600px; display: grid; place-items: center; background: #f7f0dc; font-family: 'Caveat', cursive; }
+  .art { width: 720px; height: 520px; position: relative; border-radius: 6px; overflow: hidden; }
+  .art svg { width: 100%; height: 100%; }
+  .note { position: absolute; inset: auto 0 36px; text-align: center; font-size: 48px; color: #fffdf5; text-shadow: 0 2px 6px rgba(0, 0, 0, .35); }
+</style>
+</head>
+<body>
+<div class="art"><div id="art" style="height:100%"></div><div class="note">our photo goes here 📷</div></div>
+<script src="scene.js"></script>
+<script>document.getElementById('art').innerHTML = scene('summer', { w: 720, h: 520, seed: 5, id: 'f' });</script>
+</body>
+</html>
