@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Question of the Day</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root { --wall: #eadfc4; --paper: #f4edd6; --line: rgba(120, 104, 80, .2); --ink: #4a3423; --soft: #8a7458; --sun: #d4572e; }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--wall); font-family: 'Gaegu', cursive; color: var(--ink); padding: 16px; }
+  .tile {
+    border-radius: 18px; padding: 20px 22px; background-color: var(--paper);
+    background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 13px 13px; box-shadow: 0 6px 16px rgba(74, 52, 35, .16), inset 0 0 0 1px rgba(74, 52, 35, .08);
+  }
+  .top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; color: var(--soft); font-size: 20px; }
+  h1 { font-size: 34px; line-height: 1.05; margin: 8px 0 14px; }
+  .btn { font: 700 18px 'Gaegu', cursive; color: var(--ink); background: #fffdf7; border: 1.5px dashed #b89c74; border-radius: 12px; padding: 2px 12px; cursor: pointer; }
+  .btn:hover { background: #fff6e0; }
+  .btn[hidden] { display: none; }
+  .answers { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 560px) { .answers { grid-template-columns: 1fr; } }
+  .card { border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .card.pranya { background: #f7d9dc; } .card.sagar { background: #f6e3a8; }
+  .card h2 { font-size: 24px; }
+  .card p { font-size: 21px; line-height: 1.15; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .card p.empty { color: var(--soft); }
+  textarea { font: 20px 'Gaegu', cursive; color: var(--ink); background: #fffdf7; border: 1.5px solid #cbb38c; border-radius: 10px; padding: 6px 8px; min-height: 70px; resize: vertical; width: 100%; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .msg { color: var(--sun); font-size: 17px; min-height: 18px; }
+  .past { margin-top: 18px; }
+  .past h3 { font-size: 24px; margin-bottom: 6px; }
+  .day { border-top: 1.5px dashed #cbb38c; padding: 10px 0; }
+  .day .q { font-size: 21px; font-weight: 700; }
+  .day .d { color: var(--soft); font-size: 17px; }
+  .day .a { font-size: 19px; line-height: 1.15; margin-top: 3px; white-space: pre-wrap; overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+<div class="tile">
+  <div class="top"><span>🌼 question of the day</span><span id="date"></span></div>
+  <h1 id="question">…</h1>
+  <div class="answers">
+    <div class="card pranya" data-who="pranya"><h2>🌸 Pranya</h2></div>
+    <div class="card sagar" data-who="sagar"><h2>🌻 Sagar</h2></div>
+  </div>
+  <div class="row" style="margin-top:12px"><button class="btn" id="skip" hidden>↻ different question</button><span class="msg" id="msg"></span></div>
+  <div class="past" id="past" hidden><h3>📖 earlier days</h3><div id="days"></div></div>
+</div>
+<script>
+  const API = 'https://garden-widgets.vercel.app/api/qotd';
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const pretty = (key) => new Date(key + 'T00:00').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+  const NAMES = { pranya: '🌸 Pranya', sagar: '🌻 Sagar' };
+  let data, editing = null;
+
+  function card(who) {
+    const box = document.querySelector(`.card[data-who=${who}]`);
+    box.replaceChildren(box.firstElementChild);
+    const text = data.answers[who] || '';
+    if (editing === who) {
+      const area = el('textarea'); area.value = text; area.maxLength = 1000; area.placeholder = 'write your answer…';
+      const save = el('button', 'btn', 'save'), cancel = el('button', 'btn', 'cancel');
+      save.onclick = () => send({ action: 'answer', who, text: area.value }).then(() => { editing = null; render(); });
+      cancel.onclick = () => { editing = null; render(); };
+      const row = el('div', 'row'); row.append(save, cancel);
+      box.append(area, row);
+      area.focus();
+    } else {
+      box.append(el('p', text ? '' : 'empty', text || 'no answer yet'));
+      const edit = el('button', 'btn', text ? 'edit' : 'answer');
+      edit.style.alignSelf = 'flex-start';
+      edit.onclick = () => { editing = who; render(); };
+      box.append(edit);
+    }
+  }
+
+  function render() {
+    $('date').textContent = pretty(data.date);
+    $('question').textContent = data.question;
+    card('pranya'); card('sagar');
+    $('skip').hidden = Object.keys(data.answers).length > 0;
+    $('past').hidden = !data.history.length;
+    $('days').replaceChildren(...data.history.map((h) => {
+      const day = el('div', 'day');
+      day.append(el('div', 'd', pretty(h.date)), el('div', 'q', h.question));
+      for (const who of ['pranya', 'sagar']) day.append(el('div', 'a', `${NAMES[who]}: ${h.answers[who] || '…'}`));
+      return day;
+    }));
+  }
+
+  async function send(body) {
+    $('msg').textContent = '';
+    try {
+      const res = await fetch(API, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      const out = await res.json();
+      if (!res.ok) throw new Error(out.error);
+      data = out;
+    } catch (e) {
+      $('msg').textContent = 'couldn\'t save, try again';
+      throw e;
+    }
+  }
+
+  $('skip').onclick = () => send({ action: 'skip' }).then(render);
+
+  async function load() {
+    if (editing) return; // don't wipe a half-written answer
+    try { data = await (await fetch(API, { cache: 'no-store' })).json(); render(); }
+    catch { $('msg').textContent = 'couldn\'t load, retrying…'; }
+  }
+  load();
+  setInterval(load, 60000); // picks up the other person's answer and the midnight rollover
+</script>
+</body>
+</html>
