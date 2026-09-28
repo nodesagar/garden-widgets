@@ -50,7 +50,17 @@ function cottage(x, y, s, winter) {
   </g>`;
 }
 
-function scene(season, { w = 400, h = 230, seed = 7, id = 's' } = {}) {
+// Short semi-transparent dabs that read as gouache brush strokes.
+function dabs(n, r, x0, x1, y0, y1, colors, len, width) {
+  let out = '';
+  for (let i = 0; i < n; i++) {
+    const x = x0 + r() * (x1 - x0), y = y0 + r() * (y1 - y0), a = (r() - 0.5) * 0.6, l = len * (0.6 + r() * 0.8);
+    out += `<path d="M${x} ${y} l${Math.cos(a) * l} ${Math.sin(a) * l}" stroke="${colors[i % colors.length]}" stroke-width="${width * (0.7 + r() * 0.6)}" stroke-linecap="round" opacity="${0.25 + r() * 0.3}"/>`;
+  }
+  return out;
+}
+
+function scene(season, { w = 400, h = 230, seed = 7, id = 's', gouache = false } = {}) {
   const p = PALETTES[season], r = rng(seed), k = w / 400;
   const Y = (v) => v * (h / 230);
   let out = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid slice">
@@ -60,6 +70,7 @@ function scene(season, { w = 400, h = 230, seed = 7, id = 's' } = {}) {
     <filter id="${id}grain"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 .35  0 0 0 0 .28  0 0 0 0 .2  0 0 0 .22 0"/></filter>
   </defs>
   <rect width="${w}" height="${h}" fill="url(#${id}sky)"/>`;
+  if (gouache) out = out.replace('</defs>', `<filter id="${id}wob"><feTurbulence type="fractalNoise" baseFrequency=".05" numOctaves="2" seed="${seed}"/><feDisplacementMap in="SourceGraphic" scale="${3 * k}"/></filter></defs>`) + `<g filter="url(#${id}wob)">` + dabs(90, r, 0, w, 0, Y(120), ['#ffffff', p.sky[0], p.sky[1]], 16 * k, 5 * k);
   if (season === 'summer') out += `<circle cx="${w * 0.82}" cy="${Y(42)}" r="${18 * k}" fill="#ffe07a" opacity=".95"/><circle cx="${w * 0.82}" cy="${Y(42)}" r="${28 * k}" fill="#ffe07a" opacity=".25"/>`;
   // wavy painted clouds, like brush strokes
   for (let i = 0; i < 4; i++) {
@@ -77,6 +88,7 @@ function scene(season, { w = 400, h = 230, seed = 7, id = 's' } = {}) {
   out += `<path d="M${w * 0.28} ${Y(124)} C${w * 0.5} ${Y(112)} ${w * 0.75} ${Y(114)} ${w} ${Y(122)}" stroke="#5a4332" stroke-width="${1 * k}" fill="none" opacity=".6"/>
     <path d="M-30 ${Y(170)} Q${w * 0.3} ${Y(135)} ${w * 0.6} ${Y(155)} T${w + 30} ${Y(145)} V${h + 30} H-30Z" fill="${p.hills[2]}"/>
   </g>`;
+  if (gouache) out += dabs(160, r, 0, w, Y(95), h, [p.hills[0], p.hills[1], p.hills[2], '#ffffff'], 12 * k, 3.5 * k);
   // brush texture on front hill
   for (let i = 0; i < 40; i++) {
     const x = r() * w, y = Y(165 + r() * 60);
@@ -100,6 +112,7 @@ function scene(season, { w = 400, h = 230, seed = 7, id = 's' } = {}) {
     out += `</g>`;
   }
   if (season === 'autumn') for (let i = 0; i < 10; i++) out += `<ellipse cx="${r() * w}" cy="${Y(150 + r() * 70)}" rx="${2.2 * k}" ry="${1.2 * k}" fill="${i % 2 ? '#d9692c' : '#e8a93a'}"/>`;
+  if (gouache) out += '</g>';
   out += `<rect width="${w}" height="${h}" filter="url(#${id}grain)"/></svg>`;
   return out;
 }
