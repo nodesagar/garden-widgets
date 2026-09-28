@@ -57,7 +57,7 @@
     </div>
     <table><thead><tr><th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th></tr></thead><tbody id="days"></tbody></table>
   </div>
-  <div class="tip">tap a day to leave a little heart</div>
+  <div class="tip">tap a day to leave a little heart for us</div>
   <div class="sig">~ idea garden ~</div>
 </div>
 <script src="scene.js"></script>
@@ -94,10 +94,15 @@
   ];
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'July', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-  // Hearts live in this viewer's browser only.
+  // Hearts are shared: everyone who opens the calendar sees the same ones.
+  const HEARTS_API = 'https://garden-widgets.vercel.app/api/hearts';
   let hearts = {};
-  try { hearts = JSON.parse(localStorage.getItem('garden-hearts') || '{}'); } catch (e) {}
-  const saveHearts = () => { try { localStorage.setItem('garden-hearts', JSON.stringify(hearts)); } catch (e) {} };
+  async function syncHearts() {
+    try {
+      const res = await fetch(HEARTS_API, { cache: 'no-store' });
+      if (res.ok) { hearts = await res.json(); render(); }
+    } catch (e) {}
+  }
 
   const now = new Date();
   // ?month=2026-12 opens a specific month
@@ -137,14 +142,19 @@
   document.getElementById('days').onclick = (e) => {
     const td = e.target.closest('td[data-key]');
     if (!td) return;
-    const key = td.dataset.key;
+    const key = td.dataset.key, before = { ...hearts };
     if (hearts[key]) delete hearts[key]; else hearts[key] = 1;
-    saveHearts();
     render();
+    fetch(HEARTS_API, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key }) })
+      .then((res) => (res.ok ? res.json() : Promise.reject(res)))
+      .then((server) => { hearts = server; render(); })
+      .catch(() => { hearts = before; render(); });
   };
   document.getElementById('prev').onclick = () => { view.setMonth(view.getMonth() - 1); render(); };
   document.getElementById('next').onclick = () => { view.setMonth(view.getMonth() + 1); render(); };
   render();
+  syncHearts();
+  setInterval(syncHearts, 30000);
 </script>
 </body>
 </html>
